@@ -410,8 +410,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6b621ff6a9d4b8c4d85ac07de7f8b4b9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _enableMovement: 1
-  _enableRotation: 1
+  _enableMovement: 0
+  _enableRotation: 0
   _defaultMaximumSpeed: 100
   _enableDynamicSpeed: 1
   _dynamicSpeedMinHeight: 20
@@ -429,7 +429,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81681e5d28a52c64387829d980f9ec32, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  camSpeed: -0.5
+  Geschwindigkeit: 10
+  Drehgeschwindigkeit: 100
+  Kippgeschwindigkeit: 100
 --- !u!81 &929694749
 AudioListener:
   m_ObjectHideFlags: 0
