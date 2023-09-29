@@ -429,9 +429,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81681e5d28a52c64387829d980f9ec32, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Geschwindigkeit: 10
+  Geschwindigkeit: 1000
   Drehgeschwindigkeit: 100
   Kippgeschwindigkeit: 100
+  MaxKippung: 15
 --- !u!81 &929694749
 AudioListener:
   m_ObjectHideFlags: 0
