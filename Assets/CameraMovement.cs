@@ -21,9 +21,19 @@ public class CameraMovement : MonoBehaviour
     {
         float verticalMovement = Input.GetAxis("Vertical");
         float horizontalRotation = Input.GetAxis("Horizontal");
+        float verticalRotation = 0.0f;
+
+        if (Input.GetKey(KeyCode.DownArrow)) // Wenn die Pfeiltaste nach oben gedrückt wird
+        {
+            verticalRotation = 1.0f;
+        }
+        else if (Input.GetKey(KeyCode.UpArrow)) // Wenn die Pfeiltaste nach unten gedrückt wird
+        {
+            verticalRotation = -1.0f;
+        }
 
         Vector3 movement = transform.forward * verticalMovement;
-        Vector3 rotation = new Vector3(0.0f, horizontalRotation, 0.0f) * RotationSpeed * Time.deltaTime;
+        Vector3 rotation = new Vector3(verticalRotation, horizontalRotation, 0.0f) * RotationSpeed * Time.deltaTime;
         Vector3 tilt = new Vector3(0.0f, 0.0f, -horizontalRotation) * TiltSpeed * Time.deltaTime;
 
         transform.position = transform.position + movement * Speed * Time.deltaTime;
