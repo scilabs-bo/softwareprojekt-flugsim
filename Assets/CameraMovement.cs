@@ -1,6 +1,8 @@
+using CesiumForUnity;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+
 
 public class CameraMovement : MonoBehaviour
 {
@@ -9,26 +11,43 @@ public class CameraMovement : MonoBehaviour
     float TiltSpeed = 30.0f;
     float MaxTilt = 15.0f;
     float currentVelocity;
+    CesiumCameraController cameraController;
 
 
     // Start is called before the first frame update
     void Start()
     {
+        cameraController = gameObject.GetComponent<CesiumCameraController>();
+        cameraController.defaultMaximumSpeed = 7;
     }
 
     // Update is called once per frame
     void Update()
     {
-        //float verticalMovement = Input.GetAxis("Vertical");
         float verticalMovement = 0;
         float horizontalRotation = Input.GetAxis("Horizontal");
         float verticalRotation = 0.0f;
 
-        if (Input.GetKey(KeyCode.DownArrow)) // Wenn die Pfeiltaste nach oben gedrückt wird
+
+        if (Input.GetKey(KeyCode.F1)) 
+        {
+            cameraController.defaultMaximumSpeed = 3;
+        }
+        if (Input.GetKey(KeyCode.F2)) 
+        {
+            cameraController.defaultMaximumSpeed = 15;
+        }
+
+        if (Input.GetKey(KeyCode.F3)) 
+        {
+            cameraController.defaultMaximumSpeed = 50;
+        }
+
+        if (Input.GetKey(KeyCode.DownArrow))
         {
             verticalRotation = 1.0f;
         }
-        else if (Input.GetKey(KeyCode.UpArrow)) // Wenn die Pfeiltaste nach unten gedrückt wird
+        else if (Input.GetKey(KeyCode.UpArrow))
         {
             verticalRotation = -1.0f;
         }
@@ -54,7 +73,7 @@ public class CameraMovement : MonoBehaviour
         {
             float zReset = Mathf.SmoothDampAngle(zRotation, 0, ref currentVelocity, 8f / RotationSpeed);
             float zRotationChange = zReset - zRotation;
-            Debug.Log(zRotationChange);
+            //Debug.Log(zRotationChange);
             transform.Rotate(0, 0, zRotationChange);
         }
     }
