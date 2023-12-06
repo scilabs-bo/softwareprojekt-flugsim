@@ -50,6 +50,7 @@ public class CameraMovement : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        // unklar
         cameraController = gameObject.GetComponent<CesiumCameraController>();
         cameraController.defaultMaximumSpeed = 7;
         this._georeference = this.gameObject.GetComponentInParent<CesiumGeoreference>();
@@ -60,6 +61,7 @@ public class CameraMovement : MonoBehaviour
 
     void InitializeController()
     {
+        // wenn CharacterController Komponente != null, dann als lokale Referenz speichern 
         if (this.gameObject.GetComponent<CharacterController>() != null)
         {
             Debug.LogWarning(
@@ -67,11 +69,14 @@ public class CameraMovement : MonoBehaviour
                 "added to the CesiumCameraController's game object. " +
                 "This may interfere with the CesiumCameraController's movement.");
 
+            // CharacterController wird in die Variable ._controller gespeichert
             this._controller = this.gameObject.GetComponent<CharacterController>();
         }
         else
         {
             this._controller = this.gameObject.AddComponent<CharacterController>();
+            
+            // ! nochmal nachgucken was die folgenden Zeile genau macht !
             this._controller.hideFlags = HideFlags.HideInInspector;
         }
 
@@ -84,14 +89,16 @@ public class CameraMovement : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        // Eingabewerte werden gelesen
         float verticalMovement = Input.GetAxis("Vertical");
         float horizontalRotation = Input.GetAxis("Horizontal");
-        //float verticl = Input.GetAxis("Vertical");
+        //float vertical = Input.GetAxis("Vertical");
+        // nur für die Ausgabe
         Debug.Log("Horizontal: " + horizontalRotation + " Vertical: " + verticalMovement);
 
         float verticalRotation = 0.0f;
 
-
+        // Bestimmung der drei Geschwindigkeiten
         if (Input.GetKey(KeyCode.F1)) 
         {
             cameraController.defaultMaximumSpeed = 3;
@@ -106,35 +113,48 @@ public class CameraMovement : MonoBehaviour
             cameraController.defaultMaximumSpeed = 50;
         }
 
+        // nach unten schauen
         if (Input.GetKey(KeyCode.DownArrow))
         {
             verticalRotation = 1.0f;
         }
+        // nach oben schauen
         else if (Input.GetKey(KeyCode.UpArrow))
         {
             verticalRotation = -1.0f;
         }
         
+        // Vorwärts Bewegung wird mal Eingabewert von der X-Achse berechnet 
         Vector3 movement = transform.forward * verticalMovement;
         Move(movement);
+        // neues Vektorobjekt wird berechnet anhand der Rotationsgeschwindigkeit und der Eingabewerte (zum drehen)
         Vector3 rotation = new Vector3(verticalRotation, horizontalRotation, 0.0f) * RotationSpeed * Time.deltaTime;
+        // neues Vektorobjekt wird berechnet anhand der Kippgeschwindigkeit und der Eingabewerte (kippen beim drehen)
         Vector3 tilt = new Vector3(0.0f, 0.0f, -horizontalRotation) * TiltSpeed * Time.deltaTime;
 
         //transform.position = transform.position + movement * Speed * Time.deltaTime;
+
+        // Rotation und Kippung wird ausgeführt
         transform.Rotate(rotation);
         transform.Rotate(tilt);
 
         // Limit the tilt on the Z-axis to a maximum of 45 degrees
+        // die Rotation in grad Zahlen wird übergeben (Z-Achse die von vorne nach hinten führt) 
         float zRotation = transform.localEulerAngles.z;
+        // die Gradzahlen sollen zwischen -180 und +180 liegen, dementsprechnend wird es hier umgerechnet 
         zRotation = (zRotation > 180) ? zRotation - 360 : zRotation; // Conversion to range -180 to +180
         // Debug.Log(MaxTilt);
+
+        // falls die Rotation größer als 15 Grad ist, dann wird stattdessen weiterhin nur 15 Grad verwendet
         if (Mathf.Abs(zRotation) > MaxTilt)
         {
             transform.localEulerAngles = new Vector3(0, transform.localEulerAngles.y, MaxTilt * Mathf.Sign(zRotation));
         }
 
+        // wenn keine Eingabe zur Kippung stattfindet, dann tue die folgenden Dinge...
         if (horizontalRotation == 0)
         {
+            // es soll wieder langsam in die Anfangsposition kommen, hierbei wird der Übergangswert berechnet
             float zReset = Mathf.SmoothDampAngle(zRotation, 0, ref currentVelocity, 8f / RotationSpeed);
             float zRotationChange = zReset - zRotation;
             //Debug.Log(zRotationChange);
@@ -149,20 +169,23 @@ public class CameraMovement : MonoBehaviour
     /// The x-coordinate affects movement along the transform's right axis.
     /// The y-coordinate affects movement along the georeferenced up axis.
     /// The z-coordinate affects movement along the transform's forward axis.
+    /// X-Achse = transform, Y-Achse = Georeference
     /// </remarks>
     /// <param name="movementInput">The player input.</param>
     private void Move(Vector3 movementInput)
     {
+        // rechts-links und vorwärts-rückwärts Eingabewerte werden gespeichert
         Vector3 inputDirection =
             this.transform.right * movementInput.x + this.transform.forward * movementInput.z;
 
         if (this._georeference != null)
         {
+            // unklar!
             double3 positionECEF = this._globeAnchor.positionGlobeFixed;
             double3 upECEF = CesiumWgs84Ellipsoid.GeodeticSurfaceNormal(positionECEF);
             double3 upUnity =
                 this._georeference.TransformEarthCenteredEarthFixedDirectionToUnity(upECEF);
-
+            // Bewegung anhand der Y-Achse
             inputDirection = (float3)inputDirection + (float3)upUnity * movementInput.y;
         }
 
@@ -172,31 +195,36 @@ public class CameraMovement : MonoBehaviour
             // separately from the magnitude of the velocity.
             if (this._velocity.magnitude > 0.0f)
             {
+                // 
                 Vector3 directionChange = inputDirection - this._velocity.normalized;
+                // neue Geschwindigkeit wird in Abhängigkeit der alten Geschwindigkeit berechnet 
                 this._velocity +=
                     directionChange * this._velocity.magnitude * Time.deltaTime;
             }
-
+            // Geschwindigkeit in Abhängigkeit der Beschleunigung wird berechnet
             this._velocity += inputDirection * this._acceleration * Time.deltaTime;
+            // Geschwindigkeit darf Max.Geschwindigkeit nicht überschreiten
             this._velocity = Vector3.ClampMagnitude(this._velocity, this._maxSpeed);
         }
         else
         {
-            // Decelerate
+            // Decelerate - Geschwindigkeit solange reduzieren bis Sie bei 0 ist 
             float speed = Mathf.Max(
                 this._velocity.magnitude - this._deceleration * Time.deltaTime,
                 0.0f);
-
+            // aktuller Wert wird übergeben
             this._velocity = Vector3.ClampMagnitude(this._velocity, speed);
         }
 
         if (this._velocity != Vector3.zero)
         {
+            // Bewegungsvektor wird am Controller übergeben damit Bewegung ausgeführt wird
             this._controller.Move(this._velocity * Time.deltaTime);
 
             // Other controllers may disable detectTransformChanges to control their own
             // movement, but the globe anchor should be synced even if detectTransformChanges
             // is false.
+            // unklar  
             if (!this._globeAnchor.detectTransformChanges)
             {
                 this._globeAnchor.Sync();
