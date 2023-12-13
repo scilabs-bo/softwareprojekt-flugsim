@@ -1,13 +1,10 @@
 using CesiumForUnity;
-using System.Collections;
-using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
 
 
 public class CameraMovement : MonoBehaviour
 {
-    float Speed = 100f;
     float RotationSpeed = 30.0f;
     float TiltSpeed = 30.0f;
     float MaxTilt = 15.0f;
@@ -15,36 +12,17 @@ public class CameraMovement : MonoBehaviour
     CesiumCameraController cameraController;
     private CesiumGeoreference _georeference;
     private CesiumGlobeAnchor _globeAnchor;
-    private Camera _camera;
-    private float _initialNearClipPlane;
-    private float _initialFarClipPlane;
 
     private CharacterController _controller;
 
     private Vector3 _velocity = Vector3.zero;
-    private float _lookSpeed = 10.0f;
+    private float _lookSpeed = 30.0f;
 
     // These numbers are borrowed from Cesium for Unreal.
     private float _acceleration = 20000.0f;
     private float _deceleration = 9999999959.0f;
-    private float _maxRaycastDistance = 1000 * 1000; // 1000 km;
 
     private float _maxSpeed = 100.0f; // Maximum speed with the speed multiplier applied.
-    private float _maxSpeedPreMultiplier = 0.0f; // Max speed without the multiplier applied.
-    private AnimationCurve _maxSpeedCurve;
-
-    private float _speedMultiplier = 1.0f;
-    private float _speedMultiplierIncrement = 1.5f;
-
-    // If the near clip gets too large, Unity will throw errors. Keeping it 
-    // at this value works fine even when the far clip plane gets large.
-    private float _maximumNearClipPlane = 1000.0f;
-    private float _maximumFarClipPlane = 500000000.0f;
-
-    // The maximum ratio that the far clip plane is allowed to be larger
-    // than the near clip plane. The near clip plane is set so that this
-    // ratio is never exceeded.
-    private float _maximumNearToFarRatio = 100000.0f;
 
 
     // Start is called before the first frame update
@@ -75,7 +53,7 @@ public class CameraMovement : MonoBehaviour
         else
         {
             this._controller = this.gameObject.AddComponent<CharacterController>();
-            
+
             // ! nochmal nachgucken was die folgenden Zeile genau macht !
             this._controller.hideFlags = HideFlags.HideInInspector;
         }
@@ -99,18 +77,21 @@ public class CameraMovement : MonoBehaviour
         float verticalRotation = 0.0f;
 
         // Bestimmung der drei Geschwindigkeiten
-        if (Input.GetKey(KeyCode.F1)) 
+        if (Input.GetKey(KeyCode.F1))
         {
-            cameraController.defaultMaximumSpeed = 3;
+            //cameraController.defaultMaximumSpeed = 3;
+            this._maxSpeed = 3;
         }
-        if (Input.GetKey(KeyCode.F2)) 
+        if (Input.GetKey(KeyCode.F2))
         {
-            cameraController.defaultMaximumSpeed = 15;
+            //cameraController.defaultMaximumSpeed = 15;
+            this._maxSpeed = 15;
         }
 
-        if (Input.GetKey(KeyCode.F3)) 
+        if (Input.GetKey(KeyCode.F3))
         {
-            cameraController.defaultMaximumSpeed = 50;
+            //cameraController.defaultMaximumSpeed = 50;
+            this._maxSpeed = 50;
         }
 
         // nach unten schauen
@@ -123,10 +104,10 @@ public class CameraMovement : MonoBehaviour
         {
             verticalRotation = -1.0f;
         }
-        
-        // Vorwärts Bewegung wird mal Eingabewert von der X-Achse berechnet 
-        Vector3 movement = transform.forward * verticalMovement;
-        Move(movement);
+
+        Vector3 movementInput = new Vector3(0.0f, 0.0f, verticalMovement);
+
+        Move(movementInput);
         // neues Vektorobjekt wird berechnet anhand der Rotationsgeschwindigkeit und der Eingabewerte (zum drehen)
         Vector3 rotation = new Vector3(verticalRotation, horizontalRotation, 0.0f) * RotationSpeed * Time.deltaTime;
         // neues Vektorobjekt wird berechnet anhand der Kippgeschwindigkeit und der Eingabewerte (kippen beim drehen)
@@ -134,9 +115,11 @@ public class CameraMovement : MonoBehaviour
 
         //transform.position = transform.position + movement * Speed * Time.deltaTime;
 
+        this.Rotate(horizontalRotation, verticalRotation);
+
         // Rotation und Kippung wird ausgeführt
-        transform.Rotate(rotation);
-        transform.Rotate(tilt);
+        //transform.Rotate(rotation);
+
 
         // Limit the tilt on the Z-axis to a maximum of 45 degrees
         // die Rotation in grad Zahlen wird übergeben (Z-Achse die von vorne nach hinten führt) 
@@ -146,9 +129,10 @@ public class CameraMovement : MonoBehaviour
         // Debug.Log(MaxTilt);
 
         // falls die Rotation größer als 15 Grad ist, dann wird stattdessen weiterhin nur 15 Grad verwendet
-        if (Mathf.Abs(zRotation) > MaxTilt)
+        if (Mathf.Abs(zRotation) < MaxTilt)
         {
-            transform.localEulerAngles = new Vector3(0, transform.localEulerAngles.y, MaxTilt * Mathf.Sign(zRotation));
+            if (_maxSpeed > 15)
+                transform.Rotate(tilt);
         }
 
         // wenn keine Eingabe zur Kippung stattfindet, dann tue die folgenden Dinge...
@@ -220,7 +204,6 @@ public class CameraMovement : MonoBehaviour
         {
             // Bewegungsvektor wird am Controller übergeben damit Bewegung ausgeführt wird
             this._controller.Move(this._velocity * Time.deltaTime);
-
             // Other controllers may disable detectTransformChanges to control their own
             // movement, but the globe anchor should be synced even if detectTransformChanges
             // is false.
@@ -231,4 +214,44 @@ public class CameraMovement : MonoBehaviour
             }
         }
     }
+
+    /// <summary>
+    /// Rotate the camera with the specified amounts.
+    /// </summary>
+    /// <remarks>
+    /// Horizontal rotation (i.e. looking left or right) corresponds to rotation around the Y-axis.
+    /// Vertical rotation (i.e. looking up or down) corresponds to rotation around the X-axis.
+    /// </remarks>
+    /// <param name="horizontalRotation">The amount to rotate horizontally, i.e. around the Y-axis.</param>
+    /// <param name="verticalRotation">The amount to rotate vertically, i.e. around the X-axis.</param>
+    private void Rotate(float horizontalRotation, float verticalRotation)
+    {
+        if (horizontalRotation == 0.0f && verticalRotation == 0.0f)
+        {
+            return;
+        }
+
+        float valueX = verticalRotation * this._lookSpeed * Time.smoothDeltaTime;
+        float valueY = horizontalRotation * this._lookSpeed * Time.smoothDeltaTime;
+
+        // Rotation around the X-axis occurs counter-clockwise, so the look range
+        // maps to [270, 360] degrees for the upper quarter-sphere of motion, and
+        // [0, 90] degrees for the lower. Euler angles only work with positive values,
+        // so map the [0, 90] range to [360, 450] so the entire range is [270, 450].
+        // This makes it easy to clamp the values.
+        float rotationX = this.transform.localEulerAngles.x;
+        if (rotationX <= 90.0f)
+        {
+            rotationX += 360.0f;
+        }
+
+        float newRotationX = Mathf.Clamp(rotationX - valueX, 270.0f, 450.0f);
+        float newRotationY = this.transform.localEulerAngles.y + valueY;
+        //this.transform.localRotation =
+        //    Quaternion.Euler(newRotationX, newRotationY, this.transform.localEulerAngles.z);
+        cameraController.transform.localRotation =
+            Quaternion.Euler(newRotationX, newRotationY, this.transform.localEulerAngles.z);
+    }
+
 }
+

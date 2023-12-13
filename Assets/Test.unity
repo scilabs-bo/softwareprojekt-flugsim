@@ -464,12 +464,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6b621ff6a9d4b8c4d85ac07de7f8b4b9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _enableMovement: 1
+  _enableMovement: 0
   _enableRotation: 0
   _defaultMaximumSpeed: 100
   _enableDynamicSpeed: 0
   _dynamicSpeedMinHeight: 20
-  _enableDynamicClippingPlanes: 1
+  _enableDynamicClippingPlanes: 0
   _dynamicClippingPlanesMinHeight: 10000
 --- !u!81 &1080177861
 AudioListener:
