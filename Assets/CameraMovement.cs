@@ -108,18 +108,11 @@ public class CameraMovement : MonoBehaviour
         Vector3 movementInput = new Vector3(0.0f, 0.0f, verticalMovement);
 
         Move(movementInput);
-        // neues Vektorobjekt wird berechnet anhand der Rotationsgeschwindigkeit und der Eingabewerte (zum drehen)
-        Vector3 rotation = new Vector3(verticalRotation, horizontalRotation, 0.0f) * RotationSpeed * Time.deltaTime;
         // neues Vektorobjekt wird berechnet anhand der Kippgeschwindigkeit und der Eingabewerte (kippen beim drehen)
         Vector3 tilt = new Vector3(0.0f, 0.0f, -horizontalRotation) * TiltSpeed * Time.deltaTime;
 
-        //transform.position = transform.position + movement * Speed * Time.deltaTime;
 
         this.Rotate(horizontalRotation, verticalRotation);
-
-        // Rotation und Kippung wird ausgeführt
-        //transform.Rotate(rotation);
-
 
         // Limit the tilt on the Z-axis to a maximum of 45 degrees
         // die Rotation in grad Zahlen wird übergeben (Z-Achse die von vorne nach hinten führt) 
@@ -146,16 +139,6 @@ public class CameraMovement : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Moves the controller with the given player input.
-    /// </summary>
-    /// <remarks>
-    /// The x-coordinate affects movement along the transform's right axis.
-    /// The y-coordinate affects movement along the georeferenced up axis.
-    /// The z-coordinate affects movement along the transform's forward axis.
-    /// X-Achse = transform, Y-Achse = Georeference
-    /// </remarks>
-    /// <param name="movementInput">The player input.</param>
     private void Move(Vector3 movementInput)
     {
         // rechts-links und vorwärts-rückwärts Eingabewerte werden gespeichert
@@ -215,15 +198,6 @@ public class CameraMovement : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Rotate the camera with the specified amounts.
-    /// </summary>
-    /// <remarks>
-    /// Horizontal rotation (i.e. looking left or right) corresponds to rotation around the Y-axis.
-    /// Vertical rotation (i.e. looking up or down) corresponds to rotation around the X-axis.
-    /// </remarks>
-    /// <param name="horizontalRotation">The amount to rotate horizontally, i.e. around the Y-axis.</param>
-    /// <param name="verticalRotation">The amount to rotate vertically, i.e. around the X-axis.</param>
     private void Rotate(float horizontalRotation, float verticalRotation)
     {
         if (horizontalRotation == 0.0f && verticalRotation == 0.0f)
@@ -234,11 +208,6 @@ public class CameraMovement : MonoBehaviour
         float valueX = verticalRotation * this._lookSpeed * Time.smoothDeltaTime;
         float valueY = horizontalRotation * this._lookSpeed * Time.smoothDeltaTime;
 
-        // Rotation around the X-axis occurs counter-clockwise, so the look range
-        // maps to [270, 360] degrees for the upper quarter-sphere of motion, and
-        // [0, 90] degrees for the lower. Euler angles only work with positive values,
-        // so map the [0, 90] range to [360, 450] so the entire range is [270, 450].
-        // This makes it easy to clamp the values.
         float rotationX = this.transform.localEulerAngles.x;
         if (rotationX <= 90.0f)
         {
@@ -247,8 +216,7 @@ public class CameraMovement : MonoBehaviour
 
         float newRotationX = Mathf.Clamp(rotationX - valueX, 270.0f, 450.0f);
         float newRotationY = this.transform.localEulerAngles.y + valueY;
-        //this.transform.localRotation =
-        //    Quaternion.Euler(newRotationX, newRotationY, this.transform.localEulerAngles.z);
+
         cameraController.transform.localRotation =
             Quaternion.Euler(newRotationX, newRotationY, this.transform.localEulerAngles.z);
     }
