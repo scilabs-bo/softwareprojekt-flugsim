@@ -22,7 +22,7 @@ public class CameraMovement : MonoBehaviour
     private float _acceleration = 20000.0f;
     private float _deceleration = 9999999959.0f;
 
-    private float _maxSpeed = 100.0f; // Maximum speed with the speed multiplier applied.
+    private float _maxSpeed = 50.0f; // Maximum speed with the speed multiplier applied.
 
 
     // Start is called before the first frame update
@@ -68,14 +68,14 @@ public class CameraMovement : MonoBehaviour
     void Update()
     {
         // Eingabewerte werden gelesen
-        float verticalMovement = Input.GetAxis("Vertical");
+        float verticalMovement = ((Input.GetAxis("Thruster") + 1) / 2);
         float horizontalRotation = Input.GetAxis("Horizontal");
         //float vertical = Input.GetAxis("Vertical");
         // nur für die Ausgabe
-        Debug.Log("Horizontal: " + horizontalRotation + " Vertical: " + verticalMovement);
+        
 
         float verticalRotation = 0.0f;
-
+        /*
         // Bestimmung der drei Geschwindigkeiten
         if (Input.GetKey(KeyCode.F1))
         {
@@ -93,9 +93,11 @@ public class CameraMovement : MonoBehaviour
             //cameraController.defaultMaximumSpeed = 50;
             this._maxSpeed = 50;
         }
-
+        */
+        verticalRotation = Input.GetAxis("JoyStickVorne");
+        Debug.Log("Horizontal: " + horizontalRotation + " Vertical: " + verticalMovement + " Rotation: " + verticalRotation);
         // nach unten schauen
-        if (Input.GetKey(KeyCode.DownArrow))
+        /*if (Input.GetKey(KeyCode.DownArrow))
         {
             verticalRotation = 1.0f;
         }
@@ -103,7 +105,7 @@ public class CameraMovement : MonoBehaviour
         else if (Input.GetKey(KeyCode.UpArrow))
         {
             verticalRotation = -1.0f;
-        }
+        }*/
 
         Vector3 movementInput = new Vector3(0.0f, 0.0f, verticalMovement);
 

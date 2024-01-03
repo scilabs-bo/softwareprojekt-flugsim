@@ -22,7 +22,7 @@ InputManager:
     axis: 0
     joyNum: 0
   - serializedVersion: 3
-    m_Name: Vertical
+    m_Name: JoyStickVorne
     descriptiveName: 
     descriptiveNegativeName: 
     negativeButton: 
@@ -34,9 +34,9 @@ InputManager:
     sensitivity: 3
     snap: 1
     invert: 0
-    type: 0
-    axis: 0
-    joyNum: 0
+    type: 2
+    axis: 1
+    joyNum: 3
   - serializedVersion: 3
     m_Name: Roll
     descriptiveName: 
@@ -180,10 +180,10 @@ InputManager:
     invert: 0
     type: 2
     axis: 0
-    joyNum: 0
+    joyNum: 3
   - serializedVersion: 3
-    m_Name: Vertical
-    descriptiveName: 
+    m_Name: Thruster
+    descriptiveName: Thruster
     descriptiveNegativeName: 
     negativeButton: 
     positiveButton: 
@@ -196,7 +196,7 @@ InputManager:
     invert: 1
     type: 2
     axis: 1
-    joyNum: 0
+    joyNum: 2
   - serializedVersion: 3
     m_Name: Fire1
     descriptiveName: 
