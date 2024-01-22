@@ -1,3 +1,6 @@
+using System;
+using System.Net;
+using System.Net.Sockets;
 using CesiumForUnity;
 using Unity.Mathematics;
 using UnityEngine;
@@ -36,6 +39,15 @@ public class CameraMovement : MonoBehaviour
         InitializeController();
     }
 
+    void InitializeSimulator()
+    {
+        Debug.Log("Flightsimulator started");
+        // starten
+        sendNativeCommand(1, 0);
+        // set-Volume - bewegen
+        sendNativeCommand(2, 10);
+
+    }
 
     void InitializeController()
     {
@@ -72,10 +84,10 @@ public class CameraMovement : MonoBehaviour
         float horizontalRotation = Input.GetAxis("Horizontal");
         //float vertical = Input.GetAxis("Vertical");
         // nur für die Ausgabe
-        
+
 
         float verticalRotation = 0.0f;
-        /*
+
         // Bestimmung der drei Geschwindigkeiten
         if (Input.GetKey(KeyCode.F1))
         {
@@ -93,7 +105,7 @@ public class CameraMovement : MonoBehaviour
             //cameraController.defaultMaximumSpeed = 50;
             this._maxSpeed = 50;
         }
-        */
+
         verticalRotation = Input.GetAxis("JoyStickVorne");
         Debug.Log("Horizontal: " + horizontalRotation + " Vertical: " + verticalMovement + " Rotation: " + verticalRotation);
         // nach unten schauen
@@ -139,6 +151,9 @@ public class CameraMovement : MonoBehaviour
             //Debug.Log(zRotationChange);
             transform.Rotate(0, 0, zRotationChange);
         }
+
+        // Simulator Position senden
+        //sendNativeTelemetry();
     }
 
     private void Move(Vector3 movementInput)
@@ -223,5 +238,57 @@ public class CameraMovement : MonoBehaviour
             Quaternion.Euler(newRotationX, newRotationY, this.transform.localEulerAngles.z);
     }
 
+    int sendPacketNative(byte[] data)
+    {
+        UdpClient udpClient = new UdpClient();
+        IPAddress ipAddress = IPAddress.Parse("192.168.0.147");
+        int port = 50001;
+        IPEndPoint ipEndPoint = new IPEndPoint(ipAddress, port);
+
+        return udpClient.Send(data, data.Length, ipEndPoint);
+    }
+
+    void sendNativeCommand(byte cmd, byte para)
+    {
+        byte[] data = new byte[5];
+        byte header = 71;
+        byte packet_version = 0;
+        byte command_type = 67;
+        byte command = cmd;
+        byte parameter = para;
+        data[0] = header;
+        data[1] = packet_version;
+        data[2] = command_type;
+        data[3] = command;
+        data[4] = parameter;
+
+        sendPacketNative(data);
+    }
+
+    void sendNativeTelemetry(char t, float tx, float ty, float tz, float rx, float ry, float rz)
+    {
+        byte header = 71;
+        byte packet_version = 0;
+        byte motion_type = 77;
+        byte type = (byte)t;
+        uint timestamp = (uint)(DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalMilliseconds;
+
+        byte[] data = new byte[32];
+        data[0] = header;
+        data[1] = packet_version;
+        data[2] = motion_type;
+        data[3] = type;
+        Array.Copy(BitConverter.GetBytes(timestamp), 0, data, 4, 4);
+        Array.Copy(BitConverter.GetBytes(tx), 0, data, 8, 4);
+        Array.Copy(BitConverter.GetBytes(ty), 0, data, 12, 4);
+        Array.Copy(BitConverter.GetBytes(tz), 0, data, 16, 4);
+        Array.Copy(BitConverter.GetBytes(rx), 0, data, 20, 4);
+        Array.Copy(BitConverter.GetBytes(ry), 0, data, 24, 4);
+        Array.Copy(BitConverter.GetBytes(rz), 0, data, 28, 4);
+
+        sendPacketNative(data);
+
+
+    }
 }
 
