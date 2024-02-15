@@ -26,11 +26,23 @@ public class CameraMovement : MonoBehaviour
     private float _deceleration = 9999999959.0f;
 
     private float _maxSpeed = 50.0f; // Maximum speed with the speed multiplier applied.
+    private Config config;
 
 
     // Start is called before the first frame update
     void Start()
     {
+        //load config
+        string json = File.ReadAllText(Application.dataPath + "/StreamingAssets/config.json");
+        config = JsonUtility.FromJson<Config>(json);
+        /*
+        config = new Config();
+        config.SimulatorIP = "192.168.0.147";
+        config.SimulatorPort = 50001;
+        config.SimulatorVolume = 10;
+        string json = JsonUtility.ToJson(config);
+        File.WriteAllText(Application.dataPath + "/StreamingAssets/config.json", json);
+        */
         // unklar
         cameraController = gameObject.GetComponent<CesiumCameraController>();
         cameraController.defaultMaximumSpeed = 7;
@@ -83,7 +95,7 @@ public class CameraMovement : MonoBehaviour
         float verticalMovement = ((Input.GetAxis("Thruster") + 1) / 2);
         float horizontalRotation = Input.GetAxis("Horizontal");
         //float vertical = Input.GetAxis("Vertical");
-        // nur für die Ausgabe
+        // nur fï¿½r die Ausgabe
 
 
         float verticalRotation = 0.0f;
@@ -129,13 +141,13 @@ public class CameraMovement : MonoBehaviour
         this.Rotate(horizontalRotation, verticalRotation);
 
         // Limit the tilt on the Z-axis to a maximum of 45 degrees
-        // die Rotation in grad Zahlen wird übergeben (Z-Achse die von vorne nach hinten führt) 
+        // die Rotation in grad Zahlen wird ï¿½bergeben (Z-Achse die von vorne nach hinten fï¿½hrt) 
         float zRotation = transform.localEulerAngles.z;
         // die Gradzahlen sollen zwischen -180 und +180 liegen, dementsprechnend wird es hier umgerechnet 
         zRotation = (zRotation > 180) ? zRotation - 360 : zRotation; // Conversion to range -180 to +180
         // Debug.Log(MaxTilt);
 
-        // falls die Rotation größer als 15 Grad ist, dann wird stattdessen weiterhin nur 15 Grad verwendet
+        // falls die Rotation grï¿½ï¿½er als 15 Grad ist, dann wird stattdessen weiterhin nur 15 Grad verwendet
         if (Mathf.Abs(zRotation) < MaxTilt)
         {
             if (_maxSpeed > 15)
@@ -145,7 +157,7 @@ public class CameraMovement : MonoBehaviour
         // wenn keine Eingabe zur Kippung stattfindet, dann tue die folgenden Dinge...
         if (horizontalRotation == 0)
         {
-            // es soll wieder langsam in die Anfangsposition kommen, hierbei wird der Übergangswert berechnet
+            // es soll wieder langsam in die Anfangsposition kommen, hierbei wird der ï¿½bergangswert berechnet
             float zReset = Mathf.SmoothDampAngle(zRotation, 0, ref currentVelocity, 8f / RotationSpeed);
             float zRotationChange = zReset - zRotation;
             //Debug.Log(zRotationChange);
@@ -158,7 +170,7 @@ public class CameraMovement : MonoBehaviour
 
     private void Move(Vector3 movementInput)
     {
-        // rechts-links und vorwärts-rückwärts Eingabewerte werden gespeichert
+        // rechts-links und vorwï¿½rts-rï¿½ckwï¿½rts Eingabewerte werden gespeichert
         Vector3 inputDirection =
             this.transform.right * movementInput.x + this.transform.forward * movementInput.z;
 
@@ -181,13 +193,13 @@ public class CameraMovement : MonoBehaviour
             {
                 // 
                 Vector3 directionChange = inputDirection - this._velocity.normalized;
-                // neue Geschwindigkeit wird in Abhängigkeit der alten Geschwindigkeit berechnet 
+                // neue Geschwindigkeit wird in Abhï¿½ngigkeit der alten Geschwindigkeit berechnet 
                 this._velocity +=
                     directionChange * this._velocity.magnitude * Time.deltaTime;
             }
-            // Geschwindigkeit in Abhängigkeit der Beschleunigung wird berechnet
+            // Geschwindigkeit in Abhï¿½ngigkeit der Beschleunigung wird berechnet
             this._velocity += inputDirection * this._acceleration * Time.deltaTime;
-            // Geschwindigkeit darf Max.Geschwindigkeit nicht überschreiten
+            // Geschwindigkeit darf Max.Geschwindigkeit nicht ï¿½berschreiten
             this._velocity = Vector3.ClampMagnitude(this._velocity, this._maxSpeed);
         }
         else
@@ -196,13 +208,13 @@ public class CameraMovement : MonoBehaviour
             float speed = Mathf.Max(
                 this._velocity.magnitude - this._deceleration * Time.deltaTime,
                 0.0f);
-            // aktuller Wert wird übergeben
+            // aktuller Wert wird ï¿½bergeben
             this._velocity = Vector3.ClampMagnitude(this._velocity, speed);
         }
 
         if (this._velocity != Vector3.zero)
         {
-            // Bewegungsvektor wird am Controller übergeben damit Bewegung ausgeführt wird
+            // Bewegungsvektor wird am Controller ï¿½bergeben damit Bewegung ausgefï¿½hrt wird
             this._controller.Move(this._velocity * Time.deltaTime);
             // Other controllers may disable detectTransformChanges to control their own
             // movement, but the globe anchor should be synced even if detectTransformChanges
@@ -241,8 +253,8 @@ public class CameraMovement : MonoBehaviour
     int sendPacketNative(byte[] data)
     {
         UdpClient udpClient = new UdpClient();
-        IPAddress ipAddress = IPAddress.Parse("192.168.0.147");
-        int port = 50001;
+        IPAddress ipAddress = IPAddress.Parse(config.SimulatorIP);
+        int port = config.SimulatorPort;
         IPEndPoint ipEndPoint = new IPEndPoint(ipAddress, port);
 
         return udpClient.Send(data, data.Length, ipEndPoint);
