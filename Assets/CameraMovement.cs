@@ -7,6 +7,7 @@ using CesiumForUnity;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.InputSystem;
 
 public class CameraMovement : MonoBehaviour
 {
@@ -14,6 +15,7 @@ public class CameraMovement : MonoBehaviour
     float TiltSpeed = 30.0f;
     float MaxTilt = 15.0f;
     float currentVelocity;
+    JoystickControls joystickControls;
     CesiumCameraController cameraController;
     private CesiumGeoreference _georeference;
     private CesiumGlobeAnchor _globeAnchor;
@@ -33,6 +35,45 @@ public class CameraMovement : MonoBehaviour
     enum state { ToMotion = 0, ToReady = 1 };
     private Config config;
 
+    private float verticalMovement = 0;
+    private float horizontalRotation = 0;
+    private float verticalRotation = 0;
+
+    void JoystickMovement(InputAction.CallbackContext context)
+    {
+        horizontalRotation = context.ReadValue<Vector2>().x;
+        verticalRotation = -context.ReadValue<Vector2>().y;
+    }
+
+    void ThrusterMovement(InputAction.CallbackContext context)
+    {
+        float value = context.ReadValue<float>();
+        verticalMovement = (value + 1) / 2;
+    }
+
+    void InititalizeInputActions()
+    {
+        joystickControls = new JoystickControls();
+        joystickControls.Gameplay.Enable();
+        joystickControls.Gameplay.Thruster.performed += ThrusterMovement;
+        joystickControls.Gameplay.Joystick.performed += JoystickMovement;
+        joystickControls.Gameplay.Left.performed += context => horizontalRotation = -context.ReadValue<float>();
+        joystickControls.Gameplay.Right.performed += context => horizontalRotation = context.ReadValue<float>();
+        joystickControls.Gameplay.Up.performed += context => verticalRotation = context.ReadValue<float>();
+        joystickControls.Gameplay.Down.performed += context => verticalRotation = -context.ReadValue<float>();
+        joystickControls.Gameplay.ResetScene.performed += ResetScene;
+        joystickControls.Gameplay.MaxSpeed1.performed += context => this._maxSpeed = 3;
+        joystickControls.Gameplay.MaxSpeed2.performed += context => this._maxSpeed = 15;
+        joystickControls.Gameplay.MaxSpeed3.performed += context => this._maxSpeed = 50;
+
+        joystickControls.Gameplay.Thruster.canceled += ThrusterMovement;
+        joystickControls.Gameplay.Joystick.canceled += JoystickMovement;        
+        joystickControls.Gameplay.Left.canceled += context => horizontalRotation = 0;        
+        joystickControls.Gameplay.Right.canceled += context => horizontalRotation = 0;
+        joystickControls.Gameplay.Up.canceled += context => verticalRotation = 0;       
+        joystickControls.Gameplay.Down.canceled += context => verticalRotation = 0;
+
+    }
 
     // Start is called before the first frame update
     void Start()
@@ -48,13 +89,10 @@ public class CameraMovement : MonoBehaviour
         string json = JsonUtility.ToJson(config);
         File.WriteAllText(Application.dataPath + "/StreamingAssets/config.json", json);
         */
-        // unklar
-        cameraController = gameObject.GetComponent<CesiumCameraController>();
-        cameraController.defaultMaximumSpeed = 7;
-        this._georeference = this.gameObject.GetComponentInParent<CesiumGeoreference>();
-        this._globeAnchor = this.gameObject.GetComponentInParent<CesiumGlobeAnchor>();
+
         InitializeController();
         InitializeSimulator();
+        InititalizeInputActions();
     }
 
     void InitializeSimulator()
@@ -69,6 +107,11 @@ public class CameraMovement : MonoBehaviour
 
     void InitializeController()
     {
+        // unklar
+        cameraController = gameObject.GetComponent<CesiumCameraController>();
+        cameraController.defaultMaximumSpeed = 7;
+        this._georeference = this.gameObject.GetComponentInParent<CesiumGeoreference>();
+        this._globeAnchor = this.gameObject.GetComponentInParent<CesiumGlobeAnchor>();
         // wenn CharacterController Komponente != null, dann als lokale Referenz speichern 
         if (this.gameObject.GetComponent<CharacterController>() != null)
         {
@@ -102,54 +145,16 @@ public class CameraMovement : MonoBehaviour
         Debug.Log("Shutting down simulator..");
     }
 
+    void ResetScene(InputAction.CallbackContext context)
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
+
     // Update is called once per frame
     void Update()
     {
-        // Eingabewerte werden gelesen
-        float verticalMovement = ((Input.GetAxis("Thruster") + 1) / 2);
-        float horizontalRotation = Input.GetAxis("Horizontal");
-        //float vertical = Input.GetAxis("Vertical");
-        // nur für die Ausgabe
-
-
-        float verticalRotation = 0.0f;
-
-        // Bestimmung der drei Geschwindigkeiten
-        if (Input.GetKey(KeyCode.F1))
-        {
-            //cameraController.defaultMaximumSpeed = 3;
-            this._maxSpeed = 3;
-        }
-        if (Input.GetKey(KeyCode.F2))
-        {
-            //cameraController.defaultMaximumSpeed = 15;
-            this._maxSpeed = 15;
-        }
-
-        if (Input.GetKey(KeyCode.F3))
-        {
-            //cameraController.defaultMaximumSpeed = 50;
-            this._maxSpeed = 50;
-        }
-
-        if (Input.GetKey(KeyCode.R))
-        {
-            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
-        }
-
-        verticalRotation = Input.GetAxis("JoyStickVorne");
         Debug.Log("Horizontal: " + horizontalRotation + " Vertical: " + verticalMovement + " Rotation: " + verticalRotation);
-        // nach unten schauen
-        /*if (Input.GetKey(KeyCode.DownArrow))
-        {
-            verticalRotation = 1.0f;
-        }
-        // nach oben schauen
-        else if (Input.GetKey(KeyCode.UpArrow))
-        {
-            verticalRotation = -1.0f;
-        }*/
-
+       
         Vector3 movementInput = new Vector3(0.0f, 0.0f, verticalMovement);
 
         Move(movementInput);
@@ -218,8 +223,9 @@ public class CameraMovement : MonoBehaviour
             }
             // Geschwindigkeit in Abhängigkeit der Beschleunigung wird berechnet
             this._velocity += inputDirection * this._acceleration * Time.deltaTime;
+
             // Geschwindigkeit darf Max.Geschwindigkeit nicht überschreiten
-            this._velocity = Vector3.ClampMagnitude(this._velocity, this._maxSpeed);
+            this._velocity = Vector3.ClampMagnitude(this._velocity, this._maxSpeed * Math.Abs(verticalMovement));
         }
         else
         {
