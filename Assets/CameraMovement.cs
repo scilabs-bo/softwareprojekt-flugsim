@@ -26,6 +26,9 @@ public class CameraMovement : MonoBehaviour
     private float _deceleration = 9999999959.0f;
 
     private float _maxSpeed = 50.0f; // Maximum speed with the speed multiplier applied.
+    enum telemetryCommand { Power = 0, Angle = 1, Length = 2, Platform = 3, Acceleration = 4, Acceleration_Orientation = 5, Speed_Orientation = 6 };
+    enum nativeCommand { ToState = 1, SetVolume = 2, SetPreset = 3, SetFilter = 4, ReadState = 5, ReadVolume = 6, ReadPreset = 7, ReadFilter = 8 };
+    enum state { ToMotion = 0, ToReady = 1 };
     private Config config;
 
 
@@ -49,15 +52,16 @@ public class CameraMovement : MonoBehaviour
         this._georeference = this.gameObject.GetComponentInParent<CesiumGeoreference>();
         this._globeAnchor = this.gameObject.GetComponentInParent<CesiumGlobeAnchor>();
         InitializeController();
+        InitializeSimulator();
     }
 
     void InitializeSimulator()
     {
         Debug.Log("Flightsimulator started");
         // starten
-        sendNativeCommand(1, 0);
+        sendNativeCommand((byte)nativeCommand.ToState, (byte)state.ToMotion);
         // set-Volume - bewegen
-        sendNativeCommand(2, 10);
+        sendNativeCommand((byte)nativeCommand.SetVolume, (byte)config.SimulatorVolume);
 
     }
 
@@ -165,7 +169,7 @@ public class CameraMovement : MonoBehaviour
         }
 
         // Simulator Position senden
-        //sendNativeTelemetry();
+        sendNativeTelemetry((byte)telemetryCommand.Acceleration_Orientation,0.1f,0,0,horizontalRotation,0,0);
     }
 
     private void Move(Vector3 movementInput)
@@ -277,13 +281,12 @@ public class CameraMovement : MonoBehaviour
         sendPacketNative(data);
     }
 
-    void sendNativeTelemetry(char t, float tx, float ty, float tz, float rx, float ry, float rz)
+    void sendNativeTelemetry(byte type, float tx, float ty, float tz, float rx, float ry, float rz)
     {
         byte header = 71;
         byte packet_version = 0;
         byte motion_type = 77;
-        byte type = (byte)t;
-        uint timestamp = (uint)(DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalMilliseconds;
+        uint timestamp = (uint)(DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalMilliseconds * 1000;
 
         byte[] data = new byte[32];
         data[0] = header;
