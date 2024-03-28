@@ -1,10 +1,12 @@
 using System;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using Assets;
 using CesiumForUnity;
 using Unity.Mathematics;
 using UnityEngine;
-
+using UnityEngine.SceneManagement;
 
 public class CameraMovement : MonoBehaviour
 {
@@ -92,6 +94,14 @@ public class CameraMovement : MonoBehaviour
         this._controller.detectCollisions = true;
     }
 
+    void OnApplicationQuit()
+    {
+        Debug.Log("Shutting down simulator..");
+        sendNativeCommand((byte)nativeCommand.ToState, (byte)state.ToReady);
+        System.Threading.Thread.Sleep(5000);
+        Debug.Log("Shutting down simulator..");
+    }
+
     // Update is called once per frame
     void Update()
     {
@@ -99,7 +109,7 @@ public class CameraMovement : MonoBehaviour
         float verticalMovement = ((Input.GetAxis("Thruster") + 1) / 2);
         float horizontalRotation = Input.GetAxis("Horizontal");
         //float vertical = Input.GetAxis("Vertical");
-        // nur f�r die Ausgabe
+        // nur für die Ausgabe
 
 
         float verticalRotation = 0.0f;
@@ -120,6 +130,11 @@ public class CameraMovement : MonoBehaviour
         {
             //cameraController.defaultMaximumSpeed = 50;
             this._maxSpeed = 50;
+        }
+
+        if (Input.GetKey(KeyCode.R))
+        {
+            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }
 
         verticalRotation = Input.GetAxis("JoyStickVorne");
@@ -145,13 +160,13 @@ public class CameraMovement : MonoBehaviour
         this.Rotate(horizontalRotation, verticalRotation);
 
         // Limit the tilt on the Z-axis to a maximum of 45 degrees
-        // die Rotation in grad Zahlen wird �bergeben (Z-Achse die von vorne nach hinten f�hrt) 
+        // die Rotation in grad Zahlen wird übergeben (Z-Achse die von vorne nach hinten f�hrt) 
         float zRotation = transform.localEulerAngles.z;
         // die Gradzahlen sollen zwischen -180 und +180 liegen, dementsprechnend wird es hier umgerechnet 
         zRotation = (zRotation > 180) ? zRotation - 360 : zRotation; // Conversion to range -180 to +180
         // Debug.Log(MaxTilt);
 
-        // falls die Rotation gr��er als 15 Grad ist, dann wird stattdessen weiterhin nur 15 Grad verwendet
+        // falls die Rotation größer als 15 Grad ist, dann wird stattdessen weiterhin nur 15 Grad verwendet
         if (Mathf.Abs(zRotation) < MaxTilt)
         {
             if (_maxSpeed > 15)
@@ -161,7 +176,7 @@ public class CameraMovement : MonoBehaviour
         // wenn keine Eingabe zur Kippung stattfindet, dann tue die folgenden Dinge...
         if (horizontalRotation == 0)
         {
-            // es soll wieder langsam in die Anfangsposition kommen, hierbei wird der �bergangswert berechnet
+            // es soll wieder langsam in die Anfangsposition kommen, hierbei wird der Übergangswert berechnet
             float zReset = Mathf.SmoothDampAngle(zRotation, 0, ref currentVelocity, 8f / RotationSpeed);
             float zRotationChange = zReset - zRotation;
             //Debug.Log(zRotationChange);
@@ -174,7 +189,7 @@ public class CameraMovement : MonoBehaviour
 
     private void Move(Vector3 movementInput)
     {
-        // rechts-links und vorw�rts-r�ckw�rts Eingabewerte werden gespeichert
+        // rechts-links und vorwärts-rückwärts Eingabewerte werden gespeichert
         Vector3 inputDirection =
             this.transform.right * movementInput.x + this.transform.forward * movementInput.z;
 
@@ -197,13 +212,13 @@ public class CameraMovement : MonoBehaviour
             {
                 // 
                 Vector3 directionChange = inputDirection - this._velocity.normalized;
-                // neue Geschwindigkeit wird in Abh�ngigkeit der alten Geschwindigkeit berechnet 
+                // neue Geschwindigkeit wird in Abhängigkeit der alten Geschwindigkeit berechnet 
                 this._velocity +=
                     directionChange * this._velocity.magnitude * Time.deltaTime;
             }
-            // Geschwindigkeit in Abh�ngigkeit der Beschleunigung wird berechnet
+            // Geschwindigkeit in Abhängigkeit der Beschleunigung wird berechnet
             this._velocity += inputDirection * this._acceleration * Time.deltaTime;
-            // Geschwindigkeit darf Max.Geschwindigkeit nicht �berschreiten
+            // Geschwindigkeit darf Max.Geschwindigkeit nicht überschreiten
             this._velocity = Vector3.ClampMagnitude(this._velocity, this._maxSpeed);
         }
         else
@@ -212,13 +227,13 @@ public class CameraMovement : MonoBehaviour
             float speed = Mathf.Max(
                 this._velocity.magnitude - this._deceleration * Time.deltaTime,
                 0.0f);
-            // aktuller Wert wird �bergeben
+            // aktuller Wert wird übergeben
             this._velocity = Vector3.ClampMagnitude(this._velocity, speed);
         }
 
         if (this._velocity != Vector3.zero)
         {
-            // Bewegungsvektor wird am Controller �bergeben damit Bewegung ausgef�hrt wird
+            // Bewegungsvektor wird am Controller übergeben damit Bewegung ausgeführt wird
             this._controller.Move(this._velocity * Time.deltaTime);
             // Other controllers may disable detectTransformChanges to control their own
             // movement, but the globe anchor should be synced even if detectTransformChanges
@@ -260,7 +275,6 @@ public class CameraMovement : MonoBehaviour
         IPAddress ipAddress = IPAddress.Parse(config.SimulatorIP);
         int port = config.SimulatorPort;
         IPEndPoint ipEndPoint = new IPEndPoint(ipAddress, port);
-
         return udpClient.Send(data, data.Length, ipEndPoint);
     }
 
