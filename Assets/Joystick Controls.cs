@@ -143,8 +143,30 @@ public partial class @JoystickControls: IInputActionCollection2, IDisposable
                 },
                 {
                     ""name"": """",
+                    ""id"": ""212fc295-4a4a-4680-8632-ac798b256376"",
+                    ""path"": ""<HID::Mad Catz Saitek Pro Flight X-56 Rhino Throttle>/stick/x"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Thruster"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
                     ""id"": ""da639a3b-cfa5-4d26-b0b6-4a3ee37b3f97"",
                     ""path"": ""<HID::Thrustmaster T.16000M>/stick"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Joystick"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""eac62991-5088-4646-b45d-65b4d1513d89"",
+                    ""path"": ""<HID::Mad Catz Saitek Pro Flight X-56 Rhino Stick>/stick"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",

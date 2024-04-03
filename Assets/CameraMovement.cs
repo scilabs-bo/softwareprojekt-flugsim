@@ -48,7 +48,7 @@ public class CameraMovement : MonoBehaviour
     void ThrusterMovement(InputAction.CallbackContext context)
     {
         float value = context.ReadValue<float>();
-        verticalMovement = (value + 1) / 2;
+        verticalMovement = (-value + 1) / 2;
     }
 
     void InititalizeInputActions()
@@ -189,7 +189,7 @@ public class CameraMovement : MonoBehaviour
         }
 
         // Simulator Position senden
-        sendNativeTelemetry((byte)telemetryCommand.Acceleration_Orientation,0.1f,0,0,horizontalRotation,0,0);
+        sendNativeTelemetry((byte)telemetryCommand.Acceleration_Orientation,0.05f,0.05f,0,horizontalRotation,-verticalRotation,0);
     }
 
     private void Move(Vector3 movementInput)
