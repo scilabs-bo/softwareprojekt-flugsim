@@ -11,34 +11,26 @@ using UnityEngine.InputSystem;
 
 public class CameraMovement : MonoBehaviour
 {
-    float RotationSpeed = 30.0f;
-    float TiltSpeed = 30.0f;
-    float MaxTilt = 15.0f;
-    float currentVelocity;
-    JoystickControls joystickControls;
-    CesiumCameraController cameraController;
-    private CesiumGeoreference _georeference;
-    private CesiumGlobeAnchor _globeAnchor;
-
-    private CharacterController _controller;
-
-    private Vector3 _velocity = Vector3.zero;
-    private float _lookSpeed = 30.0f;
-
-    // These numbers are borrowed from Cesium for Unreal.
+    private float RotationSpeed = 30.0f;
+    private float MaxTilt = 15.0f;
+    private float currentVelocity;
+    private float _maxSpeed = 50.0f;
     private float _acceleration = 20000.0f;
     private float _deceleration = 9999999959.0f;
-
-    private float _maxSpeed = 50.0f; // Maximum speed with the speed multiplier applied.
-    enum telemetryCommand { Power = 0, Angle = 1, Length = 2, Platform = 3, Acceleration = 4, Acceleration_Orientation = 5, Speed_Orientation = 6 };
-    enum nativeCommand { ToState = 1, SetVolume = 2, SetPreset = 3, SetFilter = 4, ReadState = 5, ReadVolume = 6, ReadPreset = 7, ReadFilter = 8 };
-    enum state { ToMotion = 0, ToReady = 1 };
-    private Config config;
-
     private float verticalMovement = 0;
     private float horizontalRotation = 0;
     private float verticalRotation = 0;
+    private Vector3 _velocity = Vector3.zero;
 
+    private JoystickControls joystickControls;
+    private CesiumCameraController cameraController;
+    private CesiumGeoreference _georeference;
+    private CesiumGlobeAnchor _globeAnchor;
+    private CharacterController _controller;
+    private Config config;
+    private SimulatorController simulatorController;
+
+    // read Input device values
     void JoystickMovement(InputAction.CallbackContext context)
     {
         horizontalRotation = context.ReadValue<Vector2>().x;
@@ -48,11 +40,13 @@ public class CameraMovement : MonoBehaviour
     void ThrusterMovement(InputAction.CallbackContext context)
     {
         float value = context.ReadValue<float>();
+        // converting values to avoid negative values 
         verticalMovement = (-value + 1) / 2;
     }
 
     void InititalizeInputActions()
     {
+        // setup the input actions 
         joystickControls = new JoystickControls();
         joystickControls.Gameplay.Enable();
         joystickControls.Gameplay.Thruster.performed += ThrusterMovement;
@@ -78,19 +72,11 @@ public class CameraMovement : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        //load config
+        // load config
         string json = File.ReadAllText(Application.dataPath + "/StreamingAssets/config.json");
         config = JsonUtility.FromJson<Config>(json);
-        /*
-        config = new Config();
-        config.SimulatorIP = "192.168.0.147";
-        config.SimulatorPort = 50001;
-        config.SimulatorVolume = 10;
-        string json = JsonUtility.ToJson(config);
-        File.WriteAllText(Application.dataPath + "/StreamingAssets/config.json", json);
-        */
 
-        InitializeController();
+        InitializeCameraController();
         InitializeSimulator();
         InititalizeInputActions();
     }
@@ -98,21 +84,22 @@ public class CameraMovement : MonoBehaviour
     void InitializeSimulator()
     {
         Debug.Log("Flightsimulator started");
-        // starten
-        sendNativeCommand((byte)nativeCommand.ToState, (byte)state.ToMotion);
-        // set-Volume - bewegen
-        sendNativeCommand((byte)nativeCommand.SetVolume, (byte)config.SimulatorVolume);
+        // starting the simulator
+        simulatorController = new SimulatorController(config); 
+        simulatorController.sendNativeCommand((byte)SimulatorController.nativeCommand.ToState, (byte)SimulatorController.state.ToMotion);
+        // set-Volume - movement intensity 
+        simulatorController.sendNativeCommand((byte)SimulatorController.nativeCommand.SetVolume, (byte)config.SimulatorVolume);
 
     }
 
-    void InitializeController()
+    void InitializeCameraController()
     {
-        // unklar
+        // this Code is borrowed from Cesium
         cameraController = gameObject.GetComponent<CesiumCameraController>();
         cameraController.defaultMaximumSpeed = 7;
         this._georeference = this.gameObject.GetComponentInParent<CesiumGeoreference>();
         this._globeAnchor = this.gameObject.GetComponentInParent<CesiumGlobeAnchor>();
-        // wenn CharacterController Komponente != null, dann als lokale Referenz speichern 
+         
         if (this.gameObject.GetComponent<CharacterController>() != null)
         {
             Debug.LogWarning(
@@ -120,14 +107,11 @@ public class CameraMovement : MonoBehaviour
                 "added to the CesiumCameraController's game object. " +
                 "This may interfere with the CesiumCameraController's movement.");
 
-            // CharacterController wird in die Variable ._controller gespeichert
             this._controller = this.gameObject.GetComponent<CharacterController>();
         }
         else
         {
             this._controller = this.gameObject.AddComponent<CharacterController>();
-
-            // ! nochmal nachgucken was die folgenden Zeile genau macht !
             this._controller.hideFlags = HideFlags.HideInInspector;
         }
 
@@ -137,14 +121,16 @@ public class CameraMovement : MonoBehaviour
         this._controller.detectCollisions = true;
     }
 
+    // this method will be called when this programm is closed 
     void OnApplicationQuit()
     {
         Debug.Log("Shutting down simulator..");
-        sendNativeCommand((byte)nativeCommand.ToState, (byte)state.ToReady);
+        simulatorController.sendNativeCommand((byte)SimulatorController.nativeCommand.ToState, (byte)SimulatorController.state.ToReady);
         System.Threading.Thread.Sleep(5000);
         Debug.Log("Shutting down simulator..");
     }
 
+    // when you are stuck then you can restart the scene
     void ResetScene(InputAction.CallbackContext context)
     {
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
@@ -154,97 +140,77 @@ public class CameraMovement : MonoBehaviour
     void Update()
     {
         Debug.Log("Horizontal: " + horizontalRotation + " Vertical: " + verticalMovement + " Rotation: " + verticalRotation);
-       
         Vector3 movementInput = new Vector3(0.0f, 0.0f, verticalMovement);
-
         Move(movementInput);
-        // neues Vektorobjekt wird berechnet anhand der Kippgeschwindigkeit und der Eingabewerte (kippen beim drehen)
-        Vector3 tilt = new Vector3(0.0f, 0.0f, -horizontalRotation) * TiltSpeed * Time.deltaTime;
 
-
+        // calculate vector for tilt
+        Vector3 tilt = new Vector3(0.0f, 0.0f, -horizontalRotation) * RotationSpeed * Time.deltaTime;
         this.Rotate(horizontalRotation, verticalRotation);
-
-        // Limit the tilt on the Z-axis to a maximum of 45 degrees
-        // die Rotation in grad Zahlen wird übergeben (Z-Achse die von vorne nach hinten f�hrt) 
         float zRotation = transform.localEulerAngles.z;
-        // die Gradzahlen sollen zwischen -180 und +180 liegen, dementsprechnend wird es hier umgerechnet 
         zRotation = (zRotation > 180) ? zRotation - 360 : zRotation; // Conversion to range -180 to +180
-        // Debug.Log(MaxTilt);
 
-        // falls die Rotation größer als 15 Grad ist, dann wird stattdessen weiterhin nur 15 Grad verwendet
+        // Limit the tilt on the Z-axis to a maximum of 15 degrees
         if (Mathf.Abs(zRotation) < MaxTilt)
         {
             if (_maxSpeed > 15)
                 transform.Rotate(tilt);
         }
 
-        // wenn keine Eingabe zur Kippung stattfindet, dann tue die folgenden Dinge...
+        // if no input go back to normal
         if (horizontalRotation == 0)
         {
-            // es soll wieder langsam in die Anfangsposition kommen, hierbei wird der Übergangswert berechnet
+            // smooth transition
             float zReset = Mathf.SmoothDampAngle(zRotation, 0, ref currentVelocity, 8f / RotationSpeed);
             float zRotationChange = zReset - zRotation;
-            //Debug.Log(zRotationChange);
             transform.Rotate(0, 0, zRotationChange);
         }
 
-        // Simulator Position senden
-        sendNativeTelemetry((byte)telemetryCommand.Acceleration_Orientation,0.05f,0.05f,0,horizontalRotation,-verticalRotation,0);
+        // send position to the simulator
+        simulatorController.sendNativeTelemetry((byte)SimulatorController.telemetryCommand.Acceleration_Orientation,0.05f,0.05f,0,horizontalRotation,-verticalRotation,0);
     }
 
     private void Move(Vector3 movementInput)
     {
-        // rechts-links und vorwärts-rückwärts Eingabewerte werden gespeichert
         Vector3 inputDirection =
             this.transform.right * movementInput.x + this.transform.forward * movementInput.z;
 
+        // update cesium georeference after movement 
         if (this._georeference != null)
         {
-            // unklar!
             double3 positionECEF = this._globeAnchor.positionGlobeFixed;
             double3 upECEF = CesiumWgs84Ellipsoid.GeodeticSurfaceNormal(positionECEF);
             double3 upUnity =
                 this._georeference.TransformEarthCenteredEarthFixedDirectionToUnity(upECEF);
-            // Bewegung anhand der Y-Achse
+            
+            // moving along the y-axis 
             inputDirection = (float3)inputDirection + (float3)upUnity * movementInput.y;
         }
 
         if (inputDirection != Vector3.zero)
         {
-            // If the controller was already moving, handle the direction change
-            // separately from the magnitude of the velocity.
             if (this._velocity.magnitude > 0.0f)
-            {
-                // 
+            { 
                 Vector3 directionChange = inputDirection - this._velocity.normalized;
-                // neue Geschwindigkeit wird in Abhängigkeit der alten Geschwindigkeit berechnet 
                 this._velocity +=
                     directionChange * this._velocity.magnitude * Time.deltaTime;
             }
-            // Geschwindigkeit in Abhängigkeit der Beschleunigung wird berechnet
             this._velocity += inputDirection * this._acceleration * Time.deltaTime;
 
-            // Geschwindigkeit darf Max.Geschwindigkeit nicht überschreiten
+            // stay below max speed 
             this._velocity = Vector3.ClampMagnitude(this._velocity, this._maxSpeed * Math.Abs(verticalMovement));
         }
         else
         {
-            // Decelerate - Geschwindigkeit solange reduzieren bis Sie bei 0 ist 
-            float speed = Mathf.Max(
-                this._velocity.magnitude - this._deceleration * Time.deltaTime,
-                0.0f);
-            // aktuller Wert wird übergeben
+            // decelerate  
+            float speed = Mathf.Max(this._velocity.magnitude - this._deceleration * Time.deltaTime,0.0f);
             this._velocity = Vector3.ClampMagnitude(this._velocity, speed);
         }
 
         if (this._velocity != Vector3.zero)
         {
-            // Bewegungsvektor wird am Controller übergeben damit Bewegung ausgeführt wird
+            // move CharacterController
             this._controller.Move(this._velocity * Time.deltaTime);
-            // Other controllers may disable detectTransformChanges to control their own
-            // movement, but the globe anchor should be synced even if detectTransformChanges
-            // is false.
-            // unklar  
+ 
             if (!this._globeAnchor.detectTransformChanges)
             {
                 this._globeAnchor.Sync();
@@ -259,9 +225,10 @@ public class CameraMovement : MonoBehaviour
             return;
         }
 
-        float valueX = verticalRotation * this._lookSpeed * Time.smoothDeltaTime;
-        float valueY = horizontalRotation * this._lookSpeed * Time.smoothDeltaTime;
+        float valueX = verticalRotation * this.RotationSpeed * Time.smoothDeltaTime;
+        float valueY = horizontalRotation * this.RotationSpeed * Time.smoothDeltaTime;
 
+        // calculate camera rotation
         float rotationX = this.transform.localEulerAngles.x;
         if (rotationX <= 90.0f)
         {
@@ -275,55 +242,6 @@ public class CameraMovement : MonoBehaviour
             Quaternion.Euler(newRotationX, newRotationY, this.transform.localEulerAngles.z);
     }
 
-    int sendPacketNative(byte[] data)
-    {
-        UdpClient udpClient = new UdpClient();
-        IPAddress ipAddress = IPAddress.Parse(config.SimulatorIP);
-        int port = config.SimulatorPort;
-        IPEndPoint ipEndPoint = new IPEndPoint(ipAddress, port);
-        return udpClient.Send(data, data.Length, ipEndPoint);
-    }
-
-    void sendNativeCommand(byte cmd, byte para)
-    {
-        byte[] data = new byte[5];
-        byte header = 71;
-        byte packet_version = 0;
-        byte command_type = 67;
-        byte command = cmd;
-        byte parameter = para;
-        data[0] = header;
-        data[1] = packet_version;
-        data[2] = command_type;
-        data[3] = command;
-        data[4] = parameter;
-
-        sendPacketNative(data);
-    }
-
-    void sendNativeTelemetry(byte type, float tx, float ty, float tz, float rx, float ry, float rz)
-    {
-        byte header = 71;
-        byte packet_version = 0;
-        byte motion_type = 77;
-        uint timestamp = (uint)(DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalMilliseconds * 1000;
-
-        byte[] data = new byte[32];
-        data[0] = header;
-        data[1] = packet_version;
-        data[2] = motion_type;
-        data[3] = type;
-        Array.Copy(BitConverter.GetBytes(timestamp), 0, data, 4, 4);
-        Array.Copy(BitConverter.GetBytes(tx), 0, data, 8, 4);
-        Array.Copy(BitConverter.GetBytes(ty), 0, data, 12, 4);
-        Array.Copy(BitConverter.GetBytes(tz), 0, data, 16, 4);
-        Array.Copy(BitConverter.GetBytes(rx), 0, data, 20, 4);
-        Array.Copy(BitConverter.GetBytes(ry), 0, data, 24, 4);
-        Array.Copy(BitConverter.GetBytes(rz), 0, data, 28, 4);
-
-        sendPacketNative(data);
-
-
-    }
+    
 }
 
